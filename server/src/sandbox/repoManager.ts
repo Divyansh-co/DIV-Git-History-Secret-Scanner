@@ -13,9 +13,6 @@ const MAX_ZIP_ENTRIES = 8000;
 const CLONE_TIMEOUT_MS = 60 * 1000; // 60 seconds
 
 export class RepoManager {
-  /**
-   * Validates if a git remote URL is safe from SSRF and protocol exploits.
-   */
   public static validateGitUrl(rawUrl: string): { valid: boolean; reason?: string } {
     try {
       const url = new URL(rawUrl.trim());
@@ -25,7 +22,6 @@ export class RepoManager {
 
       const hostname = url.hostname.toLowerCase();
 
-      // Check for loopback and private subnets
       if (
         hostname === 'localhost' ||
         hostname === '127.0.0.1' ||
@@ -33,7 +29,7 @@ export class RepoManager {
         hostname.startsWith('127.') ||
         hostname.startsWith('10.') ||
         hostname.startsWith('192.168.') ||
-        hostname === '169.254.169.254' // Cloud instance metadata endpoint
+        hostname === '169.254.169.254'
       ) {
         return { valid: false, reason: 'Private or local IP addresses are blocked for security.' };
       }
@@ -53,32 +49,23 @@ export class RepoManager {
     }
   }
 
-  /**
-   * Creates an isolated ephemeral temporary directory
-   */
   public static createEphemeralDir(): string {
     const dir = path.join(os.tmpdir(), `sentrascan_${uuidv4()}`);
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     return dir;
   }
 
-  /**
-   * Securely cleans up ephemeral repository directory
-   */
   public static async cleanup(targetDir: string): Promise<void> {
     if (!targetDir || !targetDir.includes('sentrascan_')) return;
     try {
       if (fs.existsSync(targetDir)) {
         await fs.promises.rm(targetDir, { recursive: true, force: true });
       }
-    } catch (err) {
-      console.warn(`[RepoManager] Non-fatal error cleaning up ${targetDir}:`, err);
+    } catch (err: unknown) {
+      console.warn(`[RepoManager] cleanup error for ${targetDir}:`, err);
     }
   }
 
-  /**
-   * Clones a remote repository into an ephemeral directory with strict isolation
-   */
   public static async cloneRemoteRepo(
     repoUrl: string,
     targetDir: string,
@@ -86,16 +73,13 @@ export class RepoManager {
   ): Promise<void> {
     const validation = this.validateGitUrl(repoUrl);
     if (!validation.valid) {
-      throw new Error(`Invalid or disallowed URL: ${validation.reason}`);
+      throw new Error(`Disallowed URL: ${validation.reason}`);
     }
 
     const args = [
-      '-c',
-      'core.hooksPath=/dev/null', // Anti-RCE: never execute git hooks
-      '-c',
-      'core.pager=cat',
-      '-c',
-      'safe.directory=*',
+      '-c', 'core.hooksPath=/dev/null',
+      '-c', 'core.pager=cat',
+      '-c', 'safe.directory=*',
       'clone',
       '--single-branch',
     ];
@@ -119,24 +103,22 @@ export class RepoManager {
         timeout: CLONE_TIMEOUT_MS,
         env: {
           ...process.env,
-          GIT_TERMINAL_PROMPT: '0', // Never prompt for passwords
+          GIT_TERMINAL_PROMPT: '0',
           GIT_ASKPASS: 'echo',
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (controller.signal.aborted) {
         throw new Error(`Git clone timed out after ${CLONE_TIMEOUT_MS / 1000}s.`);
       }
-      throw new Error(`Git clone failed: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Git clone failed: ${message}`);
     } finally {
       clearTimeout(timeout);
     }
   }
 
-  /**
-   * Safely unpacks an uploaded ZIP file, verifying Zip-Slip prevention,
-   * decompression bomb limits, and presence of a valid .git directory.
-   */
+  // Safely unpacks an uploaded ZIP, checks for path traversal, size limits, and presence of .git.
   public static async extractZipRepo(zipFilePath: string, targetDir: string): Promise<string> {
     const zip = new AdmZip(zipFilePath);
     const zipEntries = zip.getEntries();

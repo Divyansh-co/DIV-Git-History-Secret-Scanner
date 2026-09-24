@@ -224,16 +224,16 @@ export const App: React.FC = () => {
             <div className="text-center space-y-3 max-w-3xl mx-auto pt-4 pb-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Zero Trust • Scans All Historical Commits</span>
+                <span>Scans full commit history, not just HEAD</span>
               </div>
               <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white">
-                Find Secrets That Were{' '}
+                Find secrets in your{' '}
                 <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                  Ever Committed
+                  git history
                 </span>
               </h1>
               <p className="text-base text-slate-400 leading-relaxed">
-                Scanning HEAD is not enough. SentraScan reconstructs unified diffs across your entire Git commit history to uncover AWS keys, JWTs, API tokens, and high-entropy credentials—even if deleted commits ago.
+                Deleting a secret in a later commit doesn't remove it from git. SentraScan walks every commit in a repo's history and flags API keys, tokens, and high-entropy strings — including ones that were removed commits ago.
               </p>
             </div>
 

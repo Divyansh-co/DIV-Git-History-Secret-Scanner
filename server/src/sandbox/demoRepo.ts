@@ -39,7 +39,7 @@ export class DemoRepoGenerator {
 const AWS = require('aws-sdk');
 
 // Credentials for S3 file storage
-const AWS_ACCESS_KEY_ID = "AKIADEMO1234567EXAMPLEKEY";
+const AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE";
 const AWS_SECRET_ACCESS_KEY = "demoSecretKey/EXAMPLEONLY+NotReal/ForDemoUseOnly";
 
 const MONGO_URI = "mongodb://demo_admin:DEMO_PASS_EXAMPLE_123@cluster0.example.mongodb.net/prod";

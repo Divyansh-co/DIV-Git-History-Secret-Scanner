@@ -61,18 +61,11 @@ export class GitScanner {
     this.abortController = abortController;
   }
 
-  /**
-   * Safe execution wrapper for git commands
-   */
   private async runGit(args: string[], maxBuffer = 10 * 1024 * 1024): Promise<string> {
-    // Disable hooks and paging for security and isolation
     const safeArgs = [
-      '-c',
-      'core.hooksPath=/dev/null',
-      '-c',
-      'core.pager=cat',
-      '-c',
-      'safe.directory=*',
+      '-c', 'core.hooksPath=/dev/null',
+      '-c', 'core.pager=cat',
+      '-c', 'safe.directory=*',
       ...args,
     ];
 
@@ -90,7 +83,7 @@ export class GitScanner {
     return stdout;
   }
 
-  public async scan(onProgress?: (p: ScanProgress) => void): Promise<ScanResult> {
+  public async scan(onProgress?: (p: ScanProgress) => void, repoName?: string): Promise<ScanResult> {
     const startTime = Date.now();
     const scanId = uuidv4();
 
@@ -101,7 +94,7 @@ export class GitScanner {
       throw new Error('Target folder does not contain a valid Git repository (.git not found or corrupt).');
     }
 
-    // 2. Identify current branch name
+    // Get the active branch name (used for the summary, not as repoName)
     let branchName = 'HEAD';
     try {
       branchName = (await this.runGit(['rev-parse', '--abbrev-ref', 'HEAD'])).trim();
@@ -124,7 +117,7 @@ export class GitScanner {
       return {
         scanId,
         summary: {
-          repoName: 'empty-repository',
+          repoName: repoName ?? 'empty-repository',
           branch: branchName,
           totalCommitsScanned: 0,
           totalFindings: 0,
@@ -268,7 +261,7 @@ export class GitScanner {
     return {
       scanId,
       summary: {
-        repoName: branchName,
+        repoName: repoName ?? branchName,
         branch: branchName,
         totalCommitsScanned: totalCommits,
         totalFindings: findings.length,
@@ -281,10 +274,6 @@ export class GitScanner {
     };
   }
 
-  /**
-   * Parses git unified diff output, extracts added lines with 3-line surrounding context,
-   * and runs pattern matching + Shannon entropy scoring.
-   */
   private analyzeDiff(
     diffText: string,
     meta: {
