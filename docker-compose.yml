@@ -1,0 +1,26 @@
+services:
+  sentrascan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentrascan_app
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+    # Hard Security Sandboxing Controls
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+    # Mount /tmp as ephemeral in-memory tmpfs
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256M
+    restart: unless-stopped
